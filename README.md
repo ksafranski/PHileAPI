@@ -9,3 +9,5 @@ The API can be called by providing **key** (GET) an **action** (GET) and **path*
 ###Index
 
 **index** returns a JSON formatted array of the files in the **path** (directory)
+
+**Example** : http://host.com/phileapi.php?key=[KEY]&action=index&path=[PATH]
