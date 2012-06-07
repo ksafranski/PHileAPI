@@ -24,3 +24,28 @@ The API can be called by providing **key** (GET) an **action** (GET) and **path*
 This function requires the **type** (GET) as either 'file' or 'directory'
 
 **Example** : [URI]/phileapi.php?key=[KEY]&action=create&path=[PATH]&type=[TYPE]
+
+###Delete
+
+**delete** removes a file or (recursively) a directory based on provided **path**
+
+**Example** : [URI]/phileapi.php?key=[KEY]&action=delete&path=[PATH]
+
+###Modify
+
+**modify** is used to change name of file/directory or contents of file based on provided **path**
+
+**Example (Rename)** : [URI]/phileapi.php?key=[KEY]&action=modify&path=[PATH]&new_name=[NEW_NAME]
+**Example (Contents)** : [URI]/phileapi.php?key=[KEY]&action=modify&path=[PATH]    (POST='content')
+
+###Duplicate
+
+**duplicate** is used to create a copy of the file or directory in **destination**
+
+**Example** : [URI]/phileapi.php?key=[KEY]&action=duplicate&path=[PATH]&destination=[DESTINATION]
+
+###Upload
+
+**upload** allows posting files to the server at the provided **path** (directory)
+
+**Example** : [URI]/phileapi.php?key=[KEY]&action=upload&path=[PATH]    (FILES='upload')
