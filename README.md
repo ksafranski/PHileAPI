@@ -6,6 +6,6 @@ Simple PHP API framework for working with the filesystem
 
 The API can be called by providing **key** (GET) an **action** (GET) and **path** (GET) parameters
 
-##Index
+###Index
 
 **index** returns a JSON formatted array of the files in the **path** (directory)
