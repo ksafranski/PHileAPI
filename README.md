@@ -11,6 +11,7 @@ The API can be called by providing **key** (GET) an **action** (GET) and **path*
 **index** returns a JSON formatted array of the files in the **path** (directory)
 
 **Example**
+    
     [URI]/phileapi.php?key=[KEY]&action=index&path=[PATH]
 
 ###Open
@@ -18,6 +19,7 @@ The API can be called by providing **key** (GET) an **action** (GET) and **path*
 **open** returns the contents of a file provided in the **path** (file)
 
 **Example**
+    
     [URI]/phileapi.php?key=[KEY]&action=open&path=[PATH]
 
 ###Create
@@ -26,6 +28,7 @@ The API can be called by providing **key** (GET) an **action** (GET) and **path*
 This function requires the **type** (GET) as either 'file' or 'directory'
 
 **Example**
+    
     [URI]/phileapi.php?key=[KEY]&action=create&path=[PATH]&type=[TYPE]
 
 ###Delete
@@ -33,6 +36,7 @@ This function requires the **type** (GET) as either 'file' or 'directory'
 **delete** removes a file or (recursively) a directory based on provided **path**
 
 **Example**
+    
     [URI]/phileapi.php?key=[KEY]&action=delete&path=[PATH]
 
 ###Modify
@@ -40,9 +44,11 @@ This function requires the **type** (GET) as either 'file' or 'directory'
 **modify** is used to change name of file/directory or contents of file based on provided **path**
 
 **Example (Rename)**
+    
     [URI]/phileapi.php?key=[KEY]&action=modify&path=[PATH]&new_name=[NEW_NAME]
 
 **Example (Content)**
+    
     [URI]/phileapi.php?key=[KEY]&action=modify&path=[PATH]    
     POST = 'content'
 
@@ -59,5 +65,6 @@ This function requires the **type** (GET) as either 'file' or 'directory'
 **upload** allows posting files to the server at the provided **path** (directory)
 
 **Example**
+    
     [URI]/phileapi.php?key=[KEY]&action=upload&path=[PATH]
     FILES = 'upload'
