@@ -109,7 +109,7 @@
         public $content     = "";
         public $destination = "";
         public $upload      = "";
-        public $controller  = "phileapi.php";
+        public $controller  = "";
         
     //////////////////////////////////////////////////////////////////
     // Construct
