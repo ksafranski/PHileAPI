@@ -1,6 +1,6 @@
 #PHileAPI
 
-Simple PHP API framework for working with the filesystem
+Simple PHP API framework for working with the filesystem. Returns JSON using the JSend structure for messages and data.
 
 ##Usage
 
