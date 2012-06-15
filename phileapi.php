@@ -29,13 +29,6 @@
 *    OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/////////////////////////////////////////////////////////////////////
-// Headers
-////////////////////////////////////////////////////////////////////
-
-    header('cache-control: no-cache, must-revalidate');
-    header('content-type: application/json; charset=utf-8');
-
 //////////////////////////////////////////////////////////////////////
 // PHileAPI Controller File
 //////////////////////////////////////////////////////////////////////
@@ -44,12 +37,27 @@
     * This file resides on the remote workspace and controls all file
     * and directory interactions
     */
+
+/////////////////////////////////////////////////////////////////////
+// Headers
+////////////////////////////////////////////////////////////////////
+
+    header('cache-control: no-cache, must-revalidate');
+    header('content-type: application/json; charset=utf-8');
     
 //////////////////////////////////////////////////////////////////////
 // Key(s)
 //////////////////////////////////////////////////////////////////////
         
     $key[0] = "0123456789";
+    
+//////////////////////////////////////////////////////////////////////
+// Allowed IP's (blank for all-allowed)
+//////////////////////////////////////////////////////////////////////
+
+    $ips = array();
+    
+    // Ex: $ips = array("10.10.10.1","127.0.0.1",...);
     
 //////////////////////////////////////////////////////////////////////
 // Timezone
@@ -64,12 +72,29 @@
     ini_set('display_errors', 0);
     
 //////////////////////////////////////////////////////////////////////
-// Verification
+// Key Verification
 //////////////////////////////////////////////////////////////////////
     
     if(empty($_GET['key']) || !in_array($_GET['key'],$key)){ 
-        exit('{"status":"001"}'); // Ker error
+        exit('{"status":"fail","data":{"error":"Invalid Key"}}');
     }
+    
+//////////////////////////////////////////////////////////////////////
+// Check IPs
+//////////////////////////////////////////////////////////////////////
+
+    function getIP(){
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])){ 
+            $ip=$_SERVER['HTTP_CLIENT_IP'];
+        }elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])){
+            $ip=$_SERVER['HTTP_X_FORWARDED_FOR'];
+        }else{ $ip=$_SERVER['REMOTE_ADDR']; }
+        return $ip;
+    }
+    
+    if(!empty($ips) && !in_array(getIP(),$ips)){
+        exit('{"status":"fail","data":{"error":"Invalid Request IP: '.getIP().'"}}');
+    } 
     
 //////////////////////////////////////////////////////////////////////
 // Handlers
@@ -77,10 +102,10 @@
     
     // Get Action
     if(!empty($_GET['action'])){ $action = $_GET['action']; }
-    else{ exit('{"status":"002"}'); } // No action specified
+    else{ exit('{"status":"fail","data":{"error":"No Action Specified"}}'); }
     
     // Handle Action
-    $phileapi = new PHileAPI();
+    $phileapi = new PHileAPI($_GET,$_POST);
     $phileapi->controller = array_shift(explode('?',basename($_SERVER['REQUEST_URI'], ".php")));
     
     switch($action){
@@ -91,7 +116,7 @@
         case 'modify': $phileapi->modify(); break;        
         case 'duplicate': $phileapi->duplicate(); break;       
         case 'upload': $phileapi->upload(); break;
-        default: exit('{"status":"003"}'); // Unknown action      
+        default: exit('{"status":"fail","data":{"error":"Unknown Action"}}');      
     }
     
 //////////////////////////////////////////////////////////////////////
@@ -100,7 +125,6 @@
     
     class PHileAPI {
     
-        public $response    = "";
         public $root        = "";
         public $rel_path    = "";
         public $path        = "";
@@ -111,22 +135,27 @@
         public $upload      = "";
         public $controller  = "";
         
+        // JSEND Return Contents
+        public $status      = "";
+        public $data        = "";
+        public $message     = ""; 
+        
     //////////////////////////////////////////////////////////////////
     // Construct
     //////////////////////////////////////////////////////////////////
     
-    public function __construct() {
+    public function __construct($get,$post) {
         $this->root = dirname( __FILE__ );
-        $this->rel_path = $_GET['path'];
+        $this->rel_path = $get['path'];
         if($this->rel_path!="/"){ $this->rel_path .= "/"; } 
-        $this->path = $this->root . $_GET['path'];
+        $this->path = $this->root . $get['path'];
         // Create
-        if(!empty($_GET['type'])){ $this->type = $_GET['type']; }
+        if(!empty($get['type'])){ $this->type = $get['type']; }
         // Modify\Create
-        if(!empty($_GET['new_name'])){ $this->new_name = $_GET['new_name']; }
-        if(!empty($_POST['content'])){ $this->content = stripslashes($_POST['content']); }
+        if(!empty($get['new_name'])){ $this->new_name = $get['new_name']; }
+        if(!empty($post['content'])){ $this->content = stripslashes($post['content']); }
         // Duplicate
-        if(!empty($_GET['destination'])){ $this->destination = $this->root . $_GET['destination']; }
+        if(!empty($get['destination'])){ $this->destination = $this->root . $get['destination']; }
     }
 
     //////////////////////////////////////////////////////////////////
@@ -151,12 +180,15 @@
                         }
                     }
                     closedir($handle);
-                    $this->response = json_encode($index);
+                    $this->status = "success";
+                    $this->data = '"index":' . json_encode($index);
                 }else{
-                    $this->response = '{"status":"102"}'; // Not a directory
+                    $this->status = "error";
+                    $this->message = "Not A Directory";
                 }
             }else{
-                $this->response = '{"status":"101"}'; // Does not exits
+                $this->status = "error";
+                $this->message = "Path Does Not Exist";
             }
                 
             $this->respond();
@@ -168,10 +200,11 @@
         
         public function open(){
             if(is_file($this->path)){
-                $response = '{"content":' . json_encode(file_get_contents($this->path)) . '}';
-                $this->response = $response;
+                $this->status = "success";
+                $this->data = '"content":' . json_encode(file_get_contents($this->path));
             }else{
-                $this->response = '{"status":"201"}'; // Not a file
+                $this->status = "error";
+                $this->message = "Not A File";
             }
 
             $this->respond();
@@ -190,21 +223,24 @@
                         // Write content
                         if($this->content){ fwrite($file, $this->content); }
                         fclose($file);
-                        $this->response = '{"status":"300"}'; // Success
+                        $this->status = "success";
                     }else{
-                        $this->response = '{"status":"301"}'; // Cannot create
+                        $this->status = "error";
+                        $this->message = "Cannot Create File";
                     }
                 }else{
-                    $this->response = '{"status":"302"}'; // File already exists
+                    $this->status = "error";
+                    $this->message = "Already Exists";
                 }
             }
             
             // Create directory
             if($this->type=="directory"){
                 if(mkdir($this->path)){
-                    $this->response = '{"status":"300"}'; // Success
+                    $this->status = "success";
                 }else{
-                    $this->response = '{"status":"303"}'; // Cannot create
+                    $this->status = "error";
+                    $this->message = "Cannot Create Directory";
                 }
             }
         
@@ -224,8 +260,11 @@
             }
             
             if(file_exists($this->path)){ rrmdir($this->path); 
-            $this->response = '{"status":"400"}'; } // Success 
-            else { $this->response = '{"status":"401"}'; } // Does not exist
+                $this->status = "success"; 
+            }else{ 
+                $this->status = "error";
+                $this->message = "Path Does Not Exist";
+            }
             
             $this->respond();
         }
@@ -244,12 +283,14 @@
                 if(!file_exists($new_path)){
                     if(@copy($this->path,$new_path)){
                         unlink($this->path);
-                        $this->response = '{"status":"500"}'; // Success
+                        $this->status = "success";
                     }else{
-                        $this->response = '{"status":"502"}'; // Could not rename
+                        $this->status = "error";
+                        $this->message = "Could Not Rename";
                     }
                 }else{
-                    $this->response = '{"status":"501"}'; // Already exists
+                    $this->status = "error";
+                    $this->message = "Path Already Exists";
                 }
             }
             
@@ -259,12 +300,14 @@
                     if($file = fopen($this->path, 'w')){ 
                         fwrite($file, $this->content);
                         fclose($file);
-                        $this->response = '{"status":"500"}'; // Success
+                        $this->status = "success";
                     }else{
-                       $this->response = '{"status":"504"}'; // Cannot write to file 
+                       $this->status = "error";
+                        $this->message = "Cannot Write File";
                     }
                 }else{
-                    $this->response = '{"status":"503"}'; // Not a file
+                    $this->status = "error";
+                    $this->message = "Not A File";
                 }
             }
             
@@ -277,10 +320,15 @@
         
         public function duplicate(){
             
-            if(!file_exists($this->path))
-                { $this->response = '{"status":"601"}'; } // Invalid source
-            if(!file_exists($this->destination))
-                { $this->response = '{"status":"602"}'; } // Invalid destination
+            if(!file_exists($this->path)){ 
+                $this->status = "error";
+                $this->message = "Invalid Source";
+            }
+            
+            if(!file_exists($this->destination)){ 
+                $this->status = "error";
+                $this->message = "Invalid Destination"; 
+            }
             
             function recurse_copy($src,$dst) { 
                 $dir = opendir($src); 
@@ -300,10 +348,10 @@
             
             if(is_file($this->path)){
                 copy($this->path,$this->destination);
-                $this->response = '{"status":"600"}'; // Success
+                $this->status = "success";
             }else{
                 recurse_copy($this->path,$this->destination);
-                if(!$this->response){ $this->response = '{"status":"600"}'; } // Success
+                if(!$this->response){ $this->status = "success"; }
             }
   
             $this->respond();
@@ -317,14 +365,16 @@
         
             // Check that the path is a directory
             if(is_file($this->path)){ 
-                $this->response = '{"status":"701"}'; // Path not a directory
+                $this->status = "error";
+                $this->message = "Path Not A Directory";
             }else{
                 // Handle upload
                 $target = $this->path  . "/" . basename($_FILES['upload']['name']); 
                 if(@move_uploaded_file($_FILES['upload']['tmp_name'], $target)) {
-                    $this->response = '{"status":"700"}'; // Success    
+                    $this->status = "success";    
                 }else{
-                    $this->response = '{"status":"702"}'; // Error uploading
+                    $this->status = "error";
+                    $this->message = "Upload Error";
                 }          
             }
 
@@ -332,10 +382,29 @@
         }
         
     //////////////////////////////////////////////////////////////////
-    // RESPOND (Outputs data from all other functions)
+    // RESPOND (Outputs data in JSON [JSEND] format)
     //////////////////////////////////////////////////////////////////
         
-        public function respond(){ echo($this->response); }
+        public function respond(){ 
+            
+            // Success ///////////////////////////////////////////////
+            if($this->status=="success"){
+                if($this->data){
+                    $json = '{"status":"success","data":{'.$this->data.'}}';
+                }else{
+                    $json = '{"status":"success","data":null}';
+                }
+            
+            // Error /////////////////////////////////////////////////
+            }else{
+                $json = '{"status":"error","message":"'.$this->message.'"}';
+            }
+            
+            // Output ////////////////////////////////////////////////
+            echo($json); 
+            
+        }
     
     }
 ?>
+
