@@ -180,6 +180,13 @@
                         }
                     }
                     closedir($handle);
+                    // Sorting
+                    function build_sorter($key) {
+                        return function ($a, $b) use ($key) {
+                            return strnatcmp($a[$key], $b[$key]);
+                        };
+                    }
+                    usort($index, build_sorter('type'));
                     $this->status = "success";
                     $this->data = '"index":' . json_encode($index);
                 }else{
